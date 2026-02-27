@@ -1,14 +1,20 @@
 export async function analyzeGithub(username: string) {
-  const response = await fetch('/api/github/analyze', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username }),
-  });
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || 'GitHub analysis failed');
+  try {
+    const response = await fetch('/api/github/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('GitHub analysis API error:', errorData);
+      throw new Error(errorData.error || `GitHub analysis failed with status ${response.status}`);
+    }
+    return response.json();
+  } catch (error: any) {
+    console.error('Fetch error in analyzeGithub:', error);
+    throw error;
   }
-  return response.json();
 }
 
 export async function renderPortfolio(templateId: string, data: any) {

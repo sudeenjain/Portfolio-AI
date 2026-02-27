@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import axios from "axios";
 import archiver from "archiver";
 import ejs from "ejs";
+import 'dotenv/config';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,10 +19,16 @@ const sessions: Record<string, any> = {};
 
 async function analyzeGithub(username: string) {
   const token = process.env.GITHUB_TOKEN;
-  const headers = token ? { Authorization: `token ${token}` } : {};
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  console.log(`Analyzing GitHub user: ${username} (Token present: ${!!token})`);
+
   try {
     const userRes = await axios.get(`https://api.github.com/users/${encodeURIComponent(username.trim())}`, { headers });
     const reposRes = await axios.get(`https://api.github.com/users/${encodeURIComponent(username.trim())}/repos?sort=updated&per_page=100`, { headers });
+
+    console.log(`Successfully fetched data for ${username}. Repos: ${reposRes.data.length}`);
+
     const repos = reposRes.data.map((repo: any) => ({
       name: repo.name,
       description: repo.description,
@@ -33,6 +40,7 @@ async function analyzeGithub(username: string) {
       html_url: repo.html_url,
       homepage: repo.homepage
     }));
+
     return {
       profile: {
         name: userRes.data.name || userRes.data.login,
@@ -47,14 +55,23 @@ async function analyzeGithub(username: string) {
       repos
     };
   } catch (error: any) {
-    console.error("GitHub API Error:", error.response?.data || error.message);
-    if (error.response?.status === 403 && error.response.headers['x-ratelimit-remaining'] === '0') {
-      throw new Error("GitHub API rate limit exceeded. Please try again later or provide a GITHUB_TOKEN.");
+    const status = error.response?.status;
+    const errorData = error.response?.data;
+    const rateLimitRemaining = error.response?.headers?.['x-ratelimit-remaining'];
+
+    console.error(`GitHub API Error [${status}]:`, errorData || error.message);
+    console.error(`Rate limit remaining: ${rateLimitRemaining}`);
+
+    if (status === 401 || status === 403) {
+      if (rateLimitRemaining === '0') {
+        throw new Error("GitHub API rate limit exceeded. Please try again later or provide a GITHUB_TOKEN.");
+      }
+      throw new Error(`GitHub API access denied (403/401). Check if your GITHUB_TOKEN is valid. Status: ${status}`);
     }
-    if (error.response?.status === 404) {
+    if (status === 404) {
       throw new Error(`GitHub user "${username}" not found.`);
     }
-    throw new Error("Failed to fetch GitHub data: " + (error.response?.data?.message || error.message));
+    throw new Error(`Failed to fetch GitHub data: ${errorData?.message || error.message}`);
   }
 }
 
