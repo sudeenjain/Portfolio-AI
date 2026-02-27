@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import archiver from "archiver";
 import ejs from "ejs";
 import 'dotenv/config';
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,12 +30,11 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Gemini Helper (Dynamic Import)
-const getGemini = async () => {
+// Gemini Helper
+const getGemini = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set in environment variables");
-  const { GoogleGenAI } = await import("@google/genai");
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenerativeAI(apiKey);
 };
 
 async function analyzeGithub(username: string) {
@@ -123,8 +123,7 @@ app.post("/api/ai/generate-content", async (req, res) => {
       }))
     } : null;
 
-    const ai = await getGemini();
-    const { Type } = await import("@google/genai");
+    const ai = getGemini();
 
     const systemInstruction = "You are an expert career coach and portfolio builder. Your task is to transform raw GitHub and LinkedIn data into compelling, professional portfolio content. Focus on achievements, skills, and impact. Ensure the tone is professional yet engaging.";
     const prompt = `Generate professional portfolio content based on the following data:
@@ -142,77 +141,77 @@ Resume Text: ${resumeText || 'Not provided'}`;
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
             hero: {
-              type: Type.OBJECT,
+              type: SchemaType.OBJECT,
               properties: {
-                name: { type: Type.STRING },
-                title: { type: Type.STRING },
-                tagline: { type: Type.STRING },
-                photo_url: { type: Type.STRING },
-                location: { type: Type.STRING },
-                objective: { type: Type.STRING }
+                name: { type: SchemaType.STRING },
+                title: { type: SchemaType.STRING },
+                tagline: { type: SchemaType.STRING },
+                photo_url: { type: SchemaType.STRING },
+                location: { type: SchemaType.STRING },
+                objective: { type: SchemaType.STRING }
               },
               required: ["name", "title", "tagline"]
             },
             about: {
-              type: Type.OBJECT,
-              properties: { bio: { type: Type.STRING } },
+              type: SchemaType.OBJECT,
+              properties: { bio: { type: SchemaType.STRING } },
               required: ["bio"]
             },
             projects: {
-              type: Type.ARRAY,
+              type: SchemaType.ARRAY,
               items: {
-                type: Type.OBJECT,
+                type: SchemaType.OBJECT,
                 properties: {
-                  name: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  tech_stack: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  github_url: { type: Type.STRING },
-                  live_url: { type: Type.STRING }
+                  name: { type: SchemaType.STRING },
+                  description: { type: SchemaType.STRING },
+                  tech_stack: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                  github_url: { type: SchemaType.STRING },
+                  live_url: { type: SchemaType.STRING }
                 },
                 required: ["name", "description"]
               }
             },
             skills: {
-              type: Type.OBJECT,
+              type: SchemaType.OBJECT,
               properties: {
-                technical_skills: { type: Type.ARRAY, items: { type: Type.STRING } },
-                languages: { type: Type.ARRAY, items: { type: Type.STRING } },
-                frameworks: { type: Type.ARRAY, items: { type: Type.STRING } },
-                tools: { type: Type.ARRAY, items: { type: Type.STRING } }
+                technical_skills: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                languages: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                frameworks: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                tools: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
               }
             },
             experience: {
-              type: Type.ARRAY,
+              type: SchemaType.ARRAY,
               items: {
-                type: Type.OBJECT,
+                type: SchemaType.OBJECT,
                 properties: {
-                  company: { type: Type.STRING },
-                  role: { type: Type.STRING },
-                  duration: { type: Type.STRING },
-                  responsibilities: { type: Type.ARRAY, items: { type: Type.STRING } }
+                  company: { type: SchemaType.STRING },
+                  role: { type: SchemaType.STRING },
+                  duration: { type: SchemaType.STRING },
+                  responsibilities: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
                 }
               }
             },
             education: {
-              type: Type.ARRAY,
+              type: SchemaType.ARRAY,
               items: {
-                type: Type.OBJECT,
+                type: SchemaType.OBJECT,
                 properties: {
-                  institution: { type: Type.STRING },
-                  degree: { type: Type.STRING },
-                  year: { type: Type.STRING }
+                  institution: { type: SchemaType.STRING },
+                  degree: { type: SchemaType.STRING },
+                  year: { type: SchemaType.STRING }
                 }
               }
             },
             contact: {
-              type: Type.OBJECT,
+              type: SchemaType.OBJECT,
               properties: {
-                email: { type: Type.STRING },
-                github: { type: Type.STRING },
-                linkedin: { type: Type.STRING }
+                email: { type: SchemaType.STRING },
+                github: { type: SchemaType.STRING },
+                linkedin: { type: SchemaType.STRING }
               }
             }
           },
@@ -237,11 +236,10 @@ app.post("/api/ai/recommend-templates", async (req, res) => {
       linkedin: linkedinData
     };
 
-    const ai = await getGemini();
-    const { Type } = await import("@google/genai");
+    const ai = getGemini();
 
     const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const prompt = `Based on the following professional profile, recommend exactly 3 template IDs (from 1 to 12) that would best showcase this person's work. 
+    const prompt = `Based on the following professional profile, recommend exactly 3 template IDs (from 1 to 12) that would best showcase this person's work.
 Profile Data: ${JSON.stringify(simplifiedData)}
 Templates 1-4: Creative/Bold, 5-8: Minimal/Professional, 9-12: Technical/Data-driven.
 Provide JSON with "recommended" (array of 3 IDs) and "reasons" (array of 3 strings).`;
@@ -251,10 +249,10 @@ Provide JSON with "recommended" (array of 3 IDs) and "reasons" (array of 3 strin
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
-            recommended: { type: Type.ARRAY, items: { type: Type.INTEGER } },
-            reasons: { type: Type.ARRAY, items: { type: Type.STRING } }
+            recommended: { type: SchemaType.ARRAY, items: { type: SchemaType.INTEGER } },
+            reasons: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
           },
           required: ["recommended", "reasons"]
         }
@@ -262,43 +260,6 @@ Provide JSON with "recommended" (array of 3 IDs) and "reasons" (array of 3 strin
     });
     const result = response.response;
     res.json(JSON.parse(result.text()));
-  } catch (error: any) {
-    console.error("AI Recommend Error:", error.message);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/ai/recommend-templates", async (req, res) => {
-  const { githubData, linkedinData } = req.body;
-  try {
-    const simplifiedData = {
-      github: githubData ? { profile: githubData.profile, repo_count: githubData.repos?.length } : null,
-      linkedin: linkedinData
-    };
-
-    const ai = getGemini();
-    const prompt = `Based on the following professional profile, recommend exactly 3 template IDs (from 1 to 12) that would best showcase this person's work. 
-Profile Data: ${JSON.stringify(simplifiedData)}
-Templates 1-4: Creative/Bold, 5-8: Minimal/Professional, 9-12: Technical/Data-driven.
-Provide JSON with "recommended" (array of 3 IDs) and "reasons" (array of 3 strings).`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            recommended: { type: Type.ARRAY, items: { type: Type.INTEGER } },
-            reasons: { type: Type.ARRAY, items: { type: Type.STRING } }
-          },
-          required: ["recommended", "reasons"]
-        }
-      }
-    });
-    if (!response.text) throw new Error("Empty response from AI");
-    res.json(JSON.parse(response.text));
   } catch (error: any) {
     console.error("AI Recommend Error:", error.message);
     res.status(500).json({ error: error.message });
