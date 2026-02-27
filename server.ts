@@ -151,7 +151,7 @@ LinkedIn Data: ${JSON.stringify(linkedinData)}
 Resume Text: ${resumeText || 'Not provided'}`;
 
     const model = ai.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       systemInstruction,
     });
 
@@ -257,7 +257,7 @@ app.post("/api/ai/recommend-templates", async (req, res) => {
 
     const ai = getGemini();
 
-    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
     const prompt = `Based on the following professional profile, recommend exactly 3 template IDs (from 1 to 12) that would best showcase this person's work.
 Profile Data: ${JSON.stringify(simplifiedData)}
 Templates 1-4: Creative/Bold, 5-8: Minimal/Professional, 9-12: Technical/Data-driven.
